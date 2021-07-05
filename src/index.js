@@ -4,8 +4,9 @@ import './index.css';
 
 // Square 组件渲染了一个单独的 <button>   Square 组件称做“受控组件”
 function Square(props) {
+    console.log('props.className :>> ', props.className);
     return (
-        <button className="square" onClick={() => props.onClick()}>
+        <button className={`square ${props.className}`} onClick={() => props.onClick()}>
             {props.value}
         </button>
     )
@@ -14,8 +15,19 @@ function Square(props) {
 // Board 组件渲染了 9 个方块
 class Board extends React.Component {
     renderSquare(i) {
+        const { lines } = this.props;
+        const [a, b, c] = lines;
+
+        const isWinner = () => {
+            if(a === i || b===i || c===i) {
+                return true
+            }
+            return false;
+        }
+        
         return (
             <Square 
+                className={isWinner() ? 'winnerLine' : ''}
                 value={this.props.squares[i]} 
                 onClick={() => this.props.onClick(i)}
             />
@@ -81,6 +93,7 @@ class Game extends React.Component {
             }]),
             stepNumber: history.length,
             xIsNext: !this.state.xIsNext,
+            currentStep: -1
         })
     }
 
@@ -104,12 +117,26 @@ class Game extends React.Component {
         return { row, col }
     }
 
+    // 升序
+    handleAscending() {
+        this.setState({
+            reverse: false
+        })
+    }
+
+    // 降序
+    handleDescending() {
+        this.setState({
+            reverse: true
+        })
+    }
+
     render() {
         const history = this.state.history;
         const current = history[this.state.stepNumber];
-        const winner = calculateWinner(current.squares);
-
-        console.log('render >>> history :>> ', history);
+        const winner = calculateWinner(current.squares) ? calculateWinner(current.squares)?.winner : null;
+        const lines = calculateWinner(current.squares) ? calculateWinner(current.squares)?.lines : null;
+        console.log('lines :>> ', lines);
 
         const moves = history.map((step, move) => {
             console.log('step :>> ', step);
@@ -117,11 +144,21 @@ class Game extends React.Component {
             const rowCol = this.calcRowCol(step?.clickButtonIndex)
             const showRowCol = '   落棋点: 行号 '+ rowCol.row + ', 列号 '+rowCol.col
             return (
-                <li key={move}>
-                    <button style={(this.state.currentStep === move) ? {fontWeight: 'bolder'} : {}} onClick={() => this.jumpTo(move)}>{(desc + showRowCol)}</button>
+                <li key={move} style={{backgroundColor: 'transparent'}}>
+                    <button 
+                        style={{fontWeight: (this.state.currentStep === move) ? 'bolder' : 400}} 
+                        onClick={() => this.jumpTo(move)}
+                    >
+                        {(desc + showRowCol)}
+                    </button>
                 </li>
             )
         })
+
+        // 反转数组，升序，降序
+        if(this.state.reverse) {
+            moves.reverse()
+        }
 
         let status;
         if(winner) {
@@ -133,6 +170,7 @@ class Game extends React.Component {
             <div className="game">
                 <div className="game-board">
                     <Board
+                        lines={lines || []}
                         squares={current.squares}
                         onClick={(i) => this.handleClick(i)}
                     />
@@ -140,8 +178,8 @@ class Game extends React.Component {
                 <div className="game-info">
                     <div>{ status }</div>
                     <div>
-                        <button type="button">升序</button>
-                        <button type="button">降序</button>
+                        <button type="button" onClick={() => this.handleAscending()}>升序</button>
+                        <button type="button" onClick={() => this.handleDescending()}>降序</button>
                     </div>
                     <ol>{ moves }</ol>
                 </div>
@@ -173,8 +211,16 @@ function calculateWinner(squares) {
     for (let i = 0; i < lines.length; i++) {
       const [a, b, c] = lines[i];
       if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-        return squares[a];
+          const winnerObj = {
+              winner: squares[a],
+              lines: lines[i]
+          }
+          return winnerObj
       }
+    }
+    if(squares.indexOf(null) === -1) {
+        alert('平局！')
+        return null
     }
     return null;
   }
